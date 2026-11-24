@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="uz" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduCore CRM — OLED Black & Gold Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #000000; color: #f3f4f6; }
+        .glass-panel { 
+            background: rgba(10, 10, 12, 0.8); 
+            backdrop-filter: blur(30px); 
+            -webkit-backdrop-filter: blur(30px); 
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9); 
+        }
+        .glass-card {
+            background: rgba(20, 20, 25, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
+        }
+        .tab-btn { position: relative; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); color: #94a3b8; }
+        .tab-active { color: #f59e0b; font-weight: 800; }
+        .tab-active::after {
+            content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, #f59e0b, #10b981); border-radius: 4px 4px 0 0;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.8);
+        }
+        @keyframes scaleUp { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
+        .animate-scale { animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        input, select, textarea {
+            background: rgba(10, 10, 14, 0.9) !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+            color: #f3f4f6 !important;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: #f59e0b !important;
+            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2) !important;
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-amber-500 selection:text-black min-h-screen flex flex-col">
+
+    <!-- TOAST XABARNOMA -->
+    <div id="toastBox" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 pointer-events-none"></div>
+
+    <!-- O'QUVCHI PROFILI MODALI -->
+    <div id="studentProfileModal" class="fixed inset-0 bg-black/85 backdrop-blur-2xl hidden items-center justify-center p-4 z-50">
+        <div class="glass-panel rounded-[32px] p-8 w-full max-w-xl space-y-6 shadow-2xl animate-scale max-h-[90vh] overflow-y-auto border border-zinc-800">
+            <div class="flex items-center justify-between border-b border-zinc-800 pb-5">
+                <div class="flex items-center gap-4">
+                    <div id="modalStudentAvatar" class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-emerald-500 text-black font-black flex items-center justify-center text-2xl shadow-lg shadow-amber-500/20">A</div>
+                    <div>
+                        <h3 id="modalStudentName" class="text-xl font-extrabold text-white">O'quvchi F.I.SH</h3>
+                        <p class="text-xs text-amber-400 font-bold tracking-wide uppercase mt-0.5" id="modalStudentGroup">Guruh nomi</p>
+                    </div>
+                </div>
+                <button onclick="closeStudentModal()" class="w-10 h-10 rounded-xl bg-zinc-900 text-zinc-400 hover:text-white flex items-center justify-center text-xl font-bold transition">&times;</button>
+            </div>
+            
+            <div class="glass-card p-5 rounded-2xl space-y-4">
+                <p class="text-xs font-extrabold uppercase tracking-widest text-amber-400">📞 Aloqa va Shaxsiy Ma'lumotlar</p>
+                <div>
+                    <label class="block text-[11px] font-bold text-zinc-400 uppercase mb-1">Ota-onasining F.I.SH</label>
+                    <input type="text" id="editParentName" onchange="updateStudentInfo('parentName', this.value)" placeholder="Masalan: Otabek (Otasi)" class="w-full px-4 py-2.5 rounded-xl text-xs font-bold outline-none transition">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-zinc-400 uppercase mb-1">Telefon raqami</label>
+                        <input type="text" id="editStudentPhone" onchange="updateStudentInfo('phone', this.value)" placeholder="+998 90 123 45 67" class="w-full px-4 py-2.5 rounded-xl text-xs font-bold outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-zinc-400 uppercase mb-1">Yashash manzili</label>
+                        <input type="text" id="editStudentAddress" onchange="updateStudentInfo('address', this.value)" placeholder="Tuman, ko'cha, uy..." class="w-full px-4 py-2.5 rounded-xl text-xs font-bold outline-none transition">
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+                <div class="glass-card p-4 rounded-2xl border-amber-500/20">
+                    <p class="text-[10px] text-amber-400 uppercase font-extrabold mb-1">O'rtacha ball</p>
+                    <p class="text-lg font-black text-white" id="modalStudentAvg">—</p>
+                </div>
+                <div class="glass-card p-4 rounded-2xl border-emerald-500/20">
+                    <p class="text-[10px] text-emerald-400 uppercase font-extrabold mb-1">O'zlashtirish</p>
+                    <p class="text-lg font-black text-emerald-400" id="modalStudentPct">0%</p>
+                </div>
+                <div class="glass-card p-4 rounded-2xl border-cyan-500/20">
+                    <p class="text-[10px] text-cyan-400 uppercase font-extrabold mb-1">Davomat</p>
+                    <p class="text-lg font-black text-cyan-400" id="modalStudentAttPct">0%</p>
+                    <p class="text-[10px] text-zinc-500 font-semibold mt-0.5" id="modalStudentAttDetail">0 / 0 dars</p>
+                </div>
+            </div>
+
+            <div class="glass-card p-4 rounded-2xl space-y-2">
+                <div class="flex justify-between text-sm">
+                    <span class="text-zinc-400 font-medium">To'lagan summa:</span>
+                    <span class="font-extrabold text-zinc-200" id="modalStudentPaid">0 so'm</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                    <span class="text-zinc-400 font-medium">Qoldiq qarz:</span>
+                    <span class="font-extrabold text-rose-400" id="modalStudentDebt">0 so'm</span>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-extrabold uppercase tracking-wider text-zinc-400 mb-1.5">O'qituvchi izohi</label>
+                <input type="text" id="editStudentNote" onchange="updateStudentInfo('note', this.value)" placeholder="O'quvchi haqida qisqacha izoh..." class="w-full px-4 py-3 rounded-xl text-xs font-semibold outline-none transition">
+            </div>
+
+            <div class="flex justify-end pt-2">
+                <button onclick="closeStudentModal()" class="px-7 py-3 bg-gradient-to-r from-amber-500 to-emerald-500 hover:opacity-90 text-black font-black rounded-2xl text-xs shadow-lg shadow-amber-500/20 transition transform active:scale-95">Saqlash va Yopish</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TO'LOV CHEKI MODALI -->
+    <div id="receiptModal" class="fixed inset-0 bg-black/85 backdrop-blur-2xl hidden items-center justify-center p-4 z-50">
+        <div id="receiptPrintArea" class="glass-panel rounded-[32px] p-8 w-full max-w-sm space-y-5 shadow-2xl animate-scale border border-zinc-800">
+            <div class="text-center border-b border-dashed border-zinc-800 pb-4">
+                <div class="w-12 h-12 bg-amber-500 text-black font-black rounded-2xl flex items-center justify-center text-xl mx-auto mb-2 shadow-lg shadow-amber-500/30">E</div>
+                <h3 class="text-lg font-black text-white">EduCore O'quv Markazi</h3>
+                <p class="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">To'lov Kvitansiyasi</p>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div class="flex justify-between">
+                    <span class="text-zinc-400 font-semibold">Chek raqami:</span>
+                    <span class="font-black text-zinc-200" id="recId">#0000</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-zinc-400 font-semibold">Sana:</span>
+                    <span class="font-bold text-zinc-200" id="recDate">—</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-zinc-400 font-semibold">O'quvchi:</span>
+                    <span class="font-black text-white" id="recStudent">—</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-zinc-400 font-semibold">Guruh:</span>
+                    <span class="font-bold text-amber-400" id="recGroup">—</span>
+                </div>
+                <div class="border-t border-dashed border-zinc-800 pt-3 flex justify-between items-center">
+                    <span class="text-zinc-400 font-bold">To'langan summa:</span>
+                    <span class="text-base font-black text-emerald-400" id="recAmount">0 so'm</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-zinc-400 font-semibold">Qoldiq qarz:</span>
+                    <span class="font-bold text-rose-400" id="recDebt">0 so'm</span>
+                </div>
+            </div>
+
+            <div class="text-center text-[10px] text-zinc-500 font-semibold border-t border-zinc-900 pt-3">
+                To'lovingiz uchun rahmat!
+            </div>
+
+            <div class="flex justify-end gap-2.5 pt-2">
+                <button onclick="closeReceiptModal()" class="px-4 py-2.5 bg-zinc-900 text-zinc-300 rounded-xl text-xs font-bold">Yopish</button>
+                <button onclick="window.print()" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-xl text-xs shadow-md">🖨️ Chop etish</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SMS MODALI -->
+    <div id="smsModal" class="fixed inset-0 bg-black/85 backdrop-blur-2xl hidden items-center justify-center p-4 z-50">
+        <div class="glass-panel rounded-[32px] p-7 w-full max-w-md space-y-5 shadow-2xl animate-scale border border-zinc-800">
+            <h3 class="text-lg font-black text-white flex items-center gap-2"><span>💬</span> SMS Eslatma Matni</h3>
+            <textarea id="smsTextContent" rows="4" class="w-full p-4 rounded-2xl text-xs font-medium outline-none transition text-zinc-100"></textarea>
+            <div class="flex justify-end gap-2.5">
+                <button onclick="closeSmsModal()" class="px-4.5 py-2.5 bg-zinc-900 text-zinc-300 rounded-xl text-xs font-bold transition">Yopish</button>
+                <button onclick="copySmsText()" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-xl text-xs shadow-md transition">Nusxalash</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LOGIN EKRANI -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center p-4 bg-black relative overflow-hidden">
+        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-amber-500/10 rounded-full blur-[160px]"></div>
+        <div class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[160px]"></div>
+
+        <div class="glass-panel p-9 sm:p-11 rounded-[36px] shadow-2xl w-full max-w-md relative z-10 animate-scale border border-zinc-800">
+            <div class="w-16 h-16 bg-gradient-to-tr from-amber-500 to-emerald-500 text-black font-black rounded-2xl flex items-center justify-center text-3xl mx-auto mb-6 shadow-xl shadow-amber-500/30">E</div>
+            <h2 class="text-2xl font-black text-center text-white mb-1">Xush kelibsiz!</h2>
+            <p class="text-center text-zinc-400 text-xs font-semibold mb-8">EduCore O'quv Markazi Boshqaruv Tizimi</p>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-[11px] font-black uppercase tracking-wider text-zinc-400 mb-1.5">Login</label>
+                    <input type="text" id="loginUser" placeholder="admin" onkeypress="if(event.key==='Enter') checkLogin()"
+                        class="w-full px-4 py-3.5 rounded-2xl outline-none transition font-bold text-sm text-white border border-zinc-800">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-black uppercase tracking-wider text-zinc-400 mb-1.5">Parol</label>
+                    <input type="password" id="loginPass" placeholder="••••" onkeypress="if(event.key==='Enter') checkLogin()"
+                        class="w-full px-4 py-3.5 rounded-2xl outline-none transition font-bold text-sm text-white border border-zinc-800">
+                </div>
+                <p id="loginError" class="text-rose-400 text-xs font-bold hidden flex items-center gap-1.5"><span>⚠️</span> Login yoki parol xato kiritildi!</p>
+                <button onclick="checkLogin()" class="w-full bg-gradient-to-r from-amber-500 to-emerald-500 hover:opacity-90 text-black font-black py-4 rounded-2xl shadow-lg shadow-amber-500/20 transition transform active:scale-[0.98] mt-2 text-sm">
+                    Tizimga kirish →
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ASOSIY DASHBOARD -->
+    <div id="mainApp" class="hidden min-h-screen flex flex-col">
+        
+        <!-- YON MENYU (SIDEBAR) -->
+        <div id="sidebarOverlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/80 backdrop-blur-md z-40 hidden transition-opacity"></div>
+        <div id="sidebar" class="fixed top-0 left-0 bottom-0 w-72 glass-panel border-r border-zinc-800 z-50 transform -translate-x-full transition-transform duration-300 flex flex-col shadow-2xl">
+            <div class="p-6 border-b border-zinc-800 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-tr from-amber-500 to-emerald-500 text-black font-black rounded-xl flex items-center justify-center text-lg shadow-md shadow-amber-500/20">E</div>
+                    <div>
+                        <h3 class="font-black text-sm text-white">EduCore Menu</h3>
+                        <p class="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Navigation</p>
+                    </div>
+                </div>
+                <button onclick="toggleSidebar()" class="w-9 h-9 rounded-xl text-zinc-400 hover:bg-zinc-900 flex items-center justify-center text-lg font-bold">&times;</button>
+            </div>
+            
+            <div class="p-4 flex-1 space-y-2 overflow-y-auto">
+                <button onclick="switchSidebarView('groups')" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-xs font-extrabold text-zinc-300 hover:bg-amber-500/10 hover:text-amber-400 transition">
+                    <span class="text-lg">📚</span> Guruhlar va Boshqaruv
+                </button>
+                <button onclick="switchSidebarView('allStudents')" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-xs font-extrabold text-zinc-300 hover:bg-amber-500/10 hover:text-amber-400 transition">
+                    <span class="text-lg">👥</span> Barcha o'quvchilar
+                </button>
+                <button onclick="switchSidebarView('globalRanking')" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-xs font-extrabold text-zinc-300 hover:bg-amber-500/10 hover:text-amber-400 transition">
+                    <span class="text-lg">🏆</span> Umumiy reyting
+                </button>
+                
+                <div class="pt-4 border-t border-zinc-800/80 my-2"></div>
+
+                <!-- Telegram kanalga yuborish menyuda -->
+                <button onclick="sendGroupToTelegramChannel()" id="tgChannelSendBtn" class="hidden w-full items-center gap-3 px-4 py-3.5 rounded-2xl text-xs font-extrabold text-sky-400 bg-sky-950/40 border border-sky-800/40 hover:bg-sky-900/50 transition">
+                    <span class="text-lg">✈️</span> Kanalga yuborish
+                </button>
+
+                <!-- Excelga yuklab olish menyuda -->
+                <button onclick="exportGroupToExcel()" id="excelExportBtnSidebar" class="hidden w-full items-center gap-3 px-4 py-3.5 rounded-2xl text-xs font-extrabold text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 hover:bg-emerald-900/50 transition">
+                    <span class="text-lg">📥</span> Excelga yuklab olish
+                </button>
+
+                <!-- Sozlamalar menyuda -->
+                <button onclick="openSettings()" class="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-xs font-extrabold text-zinc-300 hover:bg-zinc-900 hover:text-white transition">
+                    <span class="text-lg">⚙️</span> Sozlamalar
+                </button>
+            </div>
+
+            <div class="p-5 border-t border-zinc-800 text-[11px] font-bold text-zinc-500 text-center">
+                EduCore CRM v10.0 Telegram Channel
+            </div>
+        </div>
+
+        <!-- Yuqori Glass Header -->
+        <header class="glass-panel sticky top-0 z-30 border-b border-zinc-800/80 px-4 sm:px-8 py-4 transition-colors duration-200">
+            <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+                <div class="flex items-center gap-3.5">
+                    <button onclick="toggleSidebar()" class="p-2.5 rounded-2xl glass-card text-zinc-200 hover:bg-zinc-900 transition active:scale-95 flex items-center justify-center w-11 h-11 shadow-sm">
+                        ☰
+                    </button>
+                    <div class="w-11 h-11 bg-gradient-to-tr from-amber-500 to-emerald-500 text-black font-black rounded-2xl flex items-center justify-center text-xl shadow-lg shadow-amber-500/20">
+                        E
+                    </div>
+                    <div>
+                        <h1 class="text-base font-black text-white leading-tight">EduCore <span class="text-amber-400">CRM</span></h1>
+                        <p class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider" id="headerSubTitle">O'quv markazi tizimi</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <button onclick="syncFromCloud()" class="inline-flex items-center gap-1.5 bg-emerald-950/40 text-emerald-400 border border-emerald-800/60 px-4 py-2.5 rounded-2xl text-xs font-extrabold hover:bg-emerald-900/50 transition active:scale-95 shadow-sm">
+                        ⬇️ Yuklab olish
+                    </button>
+                    <button onclick="syncToCloud()" class="inline-flex items-center gap-1.5 bg-amber-950/40 text-amber-400 border border-amber-800/60 px-4 py-2.5 rounded-2xl text-xs font-extrabold hover:bg-amber-900/50 transition active:scale-95 shadow-sm">
+                        ☁️ Bulutga saqlash
+                    </button>
+                    <button onclick="logout()" class="inline-flex items-center gap-1.5 bg-rose-950/40 text-rose-400 border border-rose-800/60 px-4 py-2.5 rounded-2xl text-xs font-extrabold hover:bg-rose-900/50 transition active:scale-95 shadow-sm">
+                        Chiqish
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Kontent -->
+        <main class="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto">
+            
+            <!-- GURUHLAR VIEW -->
+            <div id="mainDashboardView">
+                <div class="glass-panel p-5 rounded-[28px] shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-3 flex-wrap" id="groupTabs"></div>
+                    
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <button onclick="addGroup()" class="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-emerald-500 hover:opacity-90 text-black font-black px-5 py-3 rounded-2xl text-xs shadow-lg shadow-amber-500/20 transition active:scale-95">
+                            + Yangi guruh
+                        </button>
+                        <button onclick="editGroupDetails()" id="editGroupBtn" title="Guruh tafsilotlari" class="hidden inline-flex items-center gap-1.5 bg-amber-950/40 text-amber-400 border border-amber-800/60 px-4 py-3 rounded-2xl text-xs font-extrabold hover:bg-amber-900/50 transition shadow-sm">
+                            ✏️ Tahrirlash
+                        </button>
+                        <button onclick="deleteGroup()" id="delGroupBtn" title="Guruhni o'chirish" class="hidden inline-flex items-center gap-1.5 bg-rose-950/40 text-rose-400 border border-rose-800/60 px-4 py-3 rounded-2xl text-xs font-extrabold hover:bg-rose-900/50 transition shadow-sm">
+                            🗑️ O'chirish
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Guruh haqida qisqacha ma'lumot -->
+                <div id="groupMetaCard" class="hidden mb-6 bg-gradient-to-r from-zinc-950 via-zinc-900 to-black text-white p-6 rounded-[28px] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 items-center shadow-2xl border border-amber-500/20">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-11 h-11 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-xl font-bold text-amber-400">📚</div>
+                        <div>
+                            <p class="text-[10px] text-amber-400 font-black uppercase tracking-wider">Kurs / Fan</p>
+                            <p class="text-sm font-black tracking-tight" id="metaCourseName">Kiritilmagan</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-xl font-bold text-emerald-400">👨‍🏫</div>
+                        <div>
+                            <p class="text-[10px] text-emerald-400 font-black uppercase tracking-wider">O'qituvchi</p>
+                            <p class="text-sm font-black tracking-tight" id="metaTeacherName">Kiritilmagan</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-11 h-11 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-xl font-bold text-cyan-400">🗓️</div>
+                        <div>
+                            <p class="text-[10px] text-cyan-400 font-black uppercase tracking-wider">Dars jadvali & Xona</p>
+                            <p class="text-sm font-black tracking-tight" id="metaSchedule">Belgilanmagan</p>
+                        </div>
+                    </div>
+                    <div class="flex sm:justify-end">
+                        <button onclick="editGroupDetails()" class="bg-zinc-900 hover:bg-zinc-800 px-4 py-2.5 rounded-2xl text-xs font-extrabold transition border border-zinc-800 shadow-md">⚙️ Tahrirlash</button>
+                    </div>
+                </div>
+
+                <!-- Guruh ichidagi ish maydoni -->
+                <div id="groupWorkspace" class="hidden animate-scale">
+                    <div class="glass-panel rounded-t-[28px] border-b border-zinc-800 px-6 pt-5 flex gap-8 overflow-x-auto shadow-sm">
+                        <button onclick="switchTab('students')" id="tab-students" class="tab-btn pb-4 text-xs font-bold tab-active whitespace-nowrap flex items-center gap-2"><span>👥</span> O'quvchilar</button>
+                        <button onclick="switchTab('attendance')" id="tab-attendance" class="tab-btn pb-4 text-xs font-bold whitespace-nowrap flex items-center gap-2"><span>📅</span> Davomat</button>
+                        <button onclick="switchTab('grades')" id="tab-grades" class="tab-btn pb-4 text-xs font-bold whitespace-nowrap flex items-center gap-2"><span>📊</span> Ballar va O'zlashtirish</button>
+                        <button onclick="switchTab('payments')" id="tab-payments" class="tab-btn pb-4 text-xs font-bold whitespace-nowrap flex items-center gap-2"><span>💳</span> To'lovlar</button>
+                        <button onclick="switchTab('analytics')" id="tab-analytics" class="tab-btn pb-4 text-xs font-bold whitespace-nowrap flex items-center gap-2"><span>📈</span> Analitika</button>
+                    </div>
+
+                    <!-- 1. O'QUVCHILAR BO'LIMI -->
+                    <div id="view-students" class="glass-panel p-6 sm:p-8 rounded-b-[28px] shadow-sm border border-t-0 border-zinc-800">
+                        <div class="flex flex-col sm:flex-row gap-4 mb-6 justify-between items-center">
+                            <div class="flex gap-2.5 w-full sm:max-w-md">
+                                <input type="text" id="newStudentName" placeholder="O'quvchi ism-familiyasi..." onkeypress="if(event.key==='Enter') addStudent()"
+                                    class="flex-1 px-4 py-3 rounded-2xl text-xs font-bold outline-none transition border border-zinc-800">
+                                <button onclick="addStudent()" class="bg-amber-500 hover:bg-amber-400 text-black font-black px-6 py-3 rounded-2xl text-xs shadow-md shadow-amber-500/20 transition active:scale-95">+ Qo'shish</button>
+                            </div>
+                            <div class="flex gap-2.5 w-full sm:w-auto">
+                                <input type="text" id="studentSearchInput" oninput="renderStudents()" placeholder="🔍 Ism bo'yicha qidirish..."
+                                    class="flex-1 sm:w-64 px-4 py-3 rounded-2xl text-xs font-bold outline-none transition border border-zinc-800">
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto rounded-2xl border border-zinc-800">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-zinc-900 border-b border-zinc-800 text-[11px] font-black uppercase tracking-wider text-zinc-400">
+                                        <th class="p-4 w-14">#</th>
+                                        <th class="p-4">O'quvchi F.I.SH <span class="text-[10px] text-amber-400 font-semibold normal-case ml-1.5">(Ustiga bosib to'liq profilni oching)</span></th>
+                                        <th class="p-4 text-right">Boshqarish</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="studentsList" class="divide-y divide-zinc-900 text-xs font-semibold text-zinc-300"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 2. DAVOMAT -->
+                    <div id="view-attendance" class="glass-panel p-6 sm:p-8 rounded-b-[28px] shadow-sm border border-t-0 border-zinc-800 hidden">
+                        <div class="flex flex-wrap items-center justify-between gap-4 mb-6 glass-card p-4 rounded-2xl border border-zinc-800">
+                            <div class="flex items-center gap-3">
+                                <label class="text-xs font-black uppercase tracking-wider text-zinc-400">Dars sanasi:</label>
+                                <input type="date" id="attendanceDate" onchange="renderAttendance()" class="px-4 py-2.5 rounded-xl text-xs font-bold outline-none border border-zinc-800">
+                            </div>
+                            <div class="flex items-center gap-3 text-xs font-extrabold" id="attendanceSummary"></div>
+                        </div>
+
+                        <div class="overflow-x-auto rounded-2xl border border-zinc-800">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-zinc-900 border-b border-zinc-800 text-[11px] font-black uppercase tracking-wider text-zinc-400">
+                                        <th class="p-4 w-14">#</th>
+                                        <th class="p-4">O'quvchi F.I.SH</th>
+                                        <th class="p-4 text-right sm:text-left">Davomat holati</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="attendanceList" class="divide-y divide-zinc-900 text-xs font-semibold text-zinc-300"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 3. BALLAR VA O'ZLASHTIRISH -->
+                    <div id="view-grades" class="glass-panel p-6 sm:p-8 rounded-b-[28px] shadow-sm border border-t-0 border-zinc-800 hidden">
+                        <div class="flex flex-wrap items-center justify-between gap-4 mb-6 glass-card p-4 rounded-2xl border border-zinc-800">
+                            <div class="flex items-center gap-3">
+                                <label class="font-black text-xs uppercase tracking-wider text-zinc-400">Maksimal ball:</label>
+                                <input type="number" id="maxGradeScale" onchange="updateMaxGrade()" min="1" class="px-4 py-2 rounded-xl text-xs font-black text-amber-400 w-24 text-center outline-none border border-zinc-800" value="100">
+                            </div>
+                            <p class="text-xs font-bold text-zinc-400">Ball qo'shish uchun <b>+</b> ni bosing. O'chirish uchun baho ustiga bosing.</p>
+                        </div>
+
+                        <div class="overflow-x-auto rounded-2xl border border-zinc-800 mb-6">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-zinc-900 border-b border-zinc-800 text-[11px] font-black uppercase tracking-wider text-zinc-400">
+                                        <th class="p-4 w-12">#</th>
+                                        <th class="p-4">O'quvchi F.I.SH</th>
+                                        <th class="p-4">To'plangan ballar</th>
+                                        <th class="p-4">O'rtacha ball</th>
+                                        <th class="p-4 w-52">O'zlashtirish (%)</th>
+                                        <th class="p-4">Izoh</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="gradesList" class="divide-y divide-zinc-900 text-xs font-semibold text-zinc-300"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 text-white p-6 rounded-2xl flex flex-wrap justify-between items-center gap-6 shadow-xl border border-amber-500/20">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-2xl font-black">%</div>
+                                <div>
+                                    <p class="text-zinc-400 text-[11px] font-black uppercase tracking-wider">Guruhning o'zlashtirishi</p>
+                                    <p class="text-2xl font-black text-emerald-400" id="groupAvgMastery">0%</p>
+                                </div>
+                            </div>
+                            <div class="glass-card px-5 py-3 rounded-2xl text-xs font-extrabold text-amber-300 border border-amber-500/20" id="groupTopStudent">
+                                Eng yuqori natija: —
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. TO'LOVLAR -->
+                    <div id="view-payments" class="glass-panel p-6 sm:p-8 rounded-b-[28px] shadow-sm border border-t-0 border-zinc-800 hidden">
+                        <div class="mb-6 flex flex-wrap items-center justify-between gap-3 glass-card p-4 rounded-2xl border border-zinc-800">
+                            <div class="flex items-center gap-3">
+                                <label class="font-black text-xs uppercase tracking-wider text-zinc-400">Kurs oylik narxi (so'm):</label>
+                                <input type="number" id="courseFee" onchange="updateCourseFee()" class="px-4 py-2.5 rounded-xl w-44 text-xs font-black text-white outline-none border border-zinc-800" placeholder="300000">
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto rounded-2xl border border-zinc-800 mb-6">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-zinc-900 border-b border-zinc-800 text-[11px] font-black uppercase tracking-wider text-zinc-400">
+                                        <th class="p-4 w-12">#</th>
+                                        <th class="p-4">O'quvchi F.I.SH</th>
+                                        <th class="p-4">To'lagan summa</th>
+                                        <th class="p-4">Qoldiq qarz</th>
+                                        <th class="p-4">Holat / Chek / SMS</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="paymentsList" class="divide-y divide-zinc-900 text-xs font-semibold text-zinc-300"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 text-white p-6 rounded-[28px] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 shadow-xl border border-zinc-800">
+                            <div class="glass-card p-4.5 rounded-2xl border-emerald-500/20">
+                                <p class="text-zinc-400 text-[11px] font-extrabold uppercase tracking-wider mb-1">To'lov qilganlar</p>
+                                <p class="text-xl font-black text-emerald-400" id="statPaidCount">0 / 0 kishi</p>
+                            </div>
+                            <div class="glass-card p-4.5 rounded-2xl border-amber-500/20">
+                                <p class="text-zinc-400 text-[11px] font-extrabold uppercase tracking-wider mb-1">Jami yig'ilgan</p>
+                                <p class="text-xl font-black text-amber-400" id="statTotalPaid">0 so'm</p>
+                            </div>
+                            <div class="glass-card p-4.5 rounded-2xl border-rose-500/20">
+                                <p class="text-zinc-400 text-[11px] font-extrabold uppercase tracking-wider mb-1">Umumiy qarz</p>
+                                <p class="text-xl font-black text-rose-400" id="statTotalDebt">0 so'm</p>
+                            </div>
+                            <div class="glass-card p-4.5 rounded-2xl border-zinc-800">
+                                <p class="text-zinc-400 text-[11px] font-extrabold uppercase tracking-wider mb-1">Kutilayotgan tushum</p>
+                                <p class="text-xl font-black text-zinc-200" id="statExpected">0 so'm</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. ANALITIKA VA DIAGRAMMALAR -->
+                    <div id="view-analytics" class="glass-panel p-6 sm:p-8 rounded-b-[28px] shadow-sm border border-t-0 border-zinc-800 hidden">
+                        <h3 class="text-lg font-black text-white mb-2">📊 Guruh Analitikasi va Grafiklar</h3>
+                        <p class="text-xs text-zinc-400 mb-6">O'quvchilarning o'zlashtirish va moliyaviy holati ko'rgazmali diagrammalarda</p>
+                        
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            <div class="glass-card p-6 rounded-3xl border border-zinc-800">
+                                <h4 class="text-xs font-black uppercase tracking-wider text-amber-400 mb-4">O'zlashtirish taqsimoti</h4>
+                                <div style="height: 280px; position: relative;">
+                                    <canvas id="masteryChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="glass-card p-6 rounded-3xl border border-zinc-800">
+                                <h4 class="text-xs font-black uppercase tracking-wider text-emerald-400 mb-4">Moliyaviy tushumlar va qarzlar</h4>
+                                <div style="height: 280px; position: relative;">
+                                    <canvas id="financeChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="noGroupMsg" class="glass-panel rounded-[32px] border border-dashed border-zinc-800 text-center py-24 px-4">
+                    <div class="w-20 h-20 bg-amber-500/10 text-amber-400 rounded-3xl flex items-center justify-center mx-auto mb-5 text-3xl shadow-inner border border-amber-500/20">📚</div>
+                    <h3 class="text-lg font-black text-white mb-1">Hozircha guruh tanlanmagan</h3>
+                    <p class="text-zinc-400 text-xs max-w-sm mx-auto font-medium">Ishni boshlash uchun yuqoridan guruh tanlang yoki <b>"+ Yangi guruh"</b> tugmasini bosing.</p>
+                </div>
+            </div>
+
+            <!-- BARCHA O'QUVCHILAR VIEW -->
+            <div id="allStudentsView" class="hidden animate-scale">
+                <div class="glass-panel p-6 sm:p-8 rounded-[32px] shadow-sm border border-zinc-800">
+                    <h2 class="text-xl font-black mb-5 text-white flex items-center gap-2.5"><span>👥</span> Barcha o'quvchilar ro'yxati</h2>
+                    <div class="overflow-x-auto rounded-2xl border border-zinc-800">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-zinc-900 border-b border-zinc-800 text-[11px] font-black uppercase tracking-wider text-zinc-400">
+                                    <th class="p-4 w-12">#</th>
+                                    <th class="p-4">F.I.SH</th>
+                                    <th class="p-4">Guruhi</th>
+                                    <th class="p-4">O'rtacha ball</th>
+                                    <th class="p-4">To'lov holati</th>
+                                </tr>
+                            </thead>
+                            <tbody id="globalStudentsList" class="divide-y divide-zinc-900 text-xs font-semibold text-zinc-300"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- UMUMIY REYTING VIEW -->
+            <div id="globalRankingView" class="hidden animate-scale">
+                <div class="glass-panel p-6 sm:p-8 rounded-[32px] shadow-sm border border-zinc-800">
+                    <h2 class="text-xl font-black mb-1 text-white flex items-center gap-2.5"><span>🏆</span> O'quv markazi bo'yicha umumiy reyting</h2>
+                    <p class="text-xs text-zinc-400 font-medium mb-6">Barcha guruhdagi o'quvchilarning o'zlashtirish foizi bo'yicha top o'rinlar</p>
+                    
+                    <div class="overflow-x-auto rounded-2xl border border-zinc-800">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-zinc-900 border-b border-zinc-800 text-[11px] font-black uppercase tracking-wider text-zinc-400">
+                                    <th class="p-4 w-16">O'rin</th>
+                                    <th class="p-4">O'quvchi F.I.SH</th>
+                                    <th class="p-4">Guruhi</th>
+                                    <th class="p-4">O'zlashtirish (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="globalRankingList" class="divide-y divide-zinc-900 text-xs font-semibold text-zinc-300"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- SOZLAMALAR MODALI -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/85 backdrop-blur-2xl hidden items-center justify-center p-4 z-50">
+        <div class="glass-panel rounded-[32px] p-8 w-full max-w-md space-y-5 shadow-2xl animate-scale max-h-[90vh] overflow-y-auto border border-zinc-800">
+            <div class="flex items-center justify-between border-b border-zinc-800 pb-4">
+                <h3 class="text-lg font-black text-white">⚙️ Tizim va Telegram Sozlamalari</h3>
+                <button onclick="closeSettings()" class="w-9 h-9 rounded-xl bg-zinc-900 text-zinc-400 hover:text-white flex items-center justify-center text-xl font-bold transition">&times;</button>
+            </div>
+            
+            <!-- Telegram Bot Sozlamalari -->
+            <div>
+                <p class="text-[11px] font-black uppercase tracking-wider text-sky-400 mb-2.5">✈️ Telegram Kanalga Yuborish uchun</p>
+                <label class="block text-xs font-bold text-zinc-400 mb-1">Bot Token (@BotFather dan)</label>
+                <input type="password" id="cfgTgToken" placeholder="123456789:ABCdef..." class="w-full px-4 py-3 rounded-2xl text-xs font-bold mb-3 outline-none border border-zinc-800">
+                <label class="block text-xs font-bold text-zinc-400 mb-1">Kanal ID yoki @username</label>
+                <input type="text" id="cfgTgChatId" placeholder="@ota_onalar_kanali" class="w-full px-4 py-3 rounded-2xl text-xs font-bold outline-none border border-zinc-800">
+            </div>
+
+            <div class="border-t border-zinc-800 pt-4">
+                <p class="text-[11px] font-black uppercase tracking-wider text-amber-400 mb-2.5">☁️ JSONBin.io Bulutli Baza</p>
+                <label class="block text-xs font-bold text-zinc-400 mb-1">Bin ID</label>
+                <input type="text" id="cfgBinId" placeholder="6b04..." class="w-full px-4 py-3 rounded-2xl text-xs font-bold mb-3 outline-none border border-zinc-800">
+                <label class="block text-xs font-bold text-zinc-400 mb-1">X-Master-Key</label>
+                <input type="password" id="cfgApiKey" placeholder="$2a$10$..." class="w-full px-4 py-3 rounded-2xl text-xs font-bold outline-none border border-zinc-800">
+            </div>
+
+            <div class="border-t border-zinc-800 pt-4">
+                <p class="text-[11px] font-black uppercase tracking-wider text-amber-400 mb-2.5">🔐 Kirish parolini yangilash</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="text" id="cfgLogin" placeholder="Yangi login" class="w-full px-4 py-3 rounded-2xl text-xs font-bold outline-none border border-zinc-800">
+                    <input type="text" id="cfgPass" placeholder="Yangi parol" class="w-full px-4 py-3 rounded-2xl text-xs font-bold outline-none border border-zinc-800">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <button onclick="closeSettings()" class="px-5 py-3 bg-zinc-900 text-zinc-300 rounded-2xl text-xs font-extrabold transition border border-zinc-800">Bekor qilish</button>
+                <button onclick="saveSettings()" class="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-black font-black rounded-2xl text-xs shadow-md transition">Saqlash</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let appData = JSON.parse(localStorage.getItem('crm_data')) || { groups: [] };
+        let config = JSON.parse(localStorage.getItem('crm_config')) || {
+            user: 'admin', pass: '1234', binId: '', apiKey: '', tgToken: '', tgChatId: ''
+        };
+        let activeGroupId = null;
+        let currentEditingStudentId = null;
+        let masteryChartInstance = null;
+        let financeChartInstance = null;
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('-translate-x-full');
+            document.getElementById('sidebarOverlay').classList.toggle('hidden');
+        }
+
+        function switchSidebarView(viewName) {
+            toggleSidebar();
+            document.getElementById('mainDashboardView').classList.add('hidden');
+            document.getElementById('allStudentsView').classList.add('hidden');
+            document.getElementById('globalRankingView').classList.add('hidden');
+
+            const subTitle = document.getElementById('headerSubTitle');
+
+            if (viewName === 'groups') {
+                document.getElementById('mainDashboardView').classList.remove('hidden');
+                subTitle.innerText = "O'quv markazi tizimi";
+            } else if (viewName === 'allStudents') {
+                document.getElementById('allStudentsView').classList.remove('hidden');
+                subTitle.innerText = "Barcha o'quvchilar";
+                renderAllStudentsView();
+            } else if (viewName === 'globalRanking') {
+                document.getElementById('globalRankingView').classList.remove('hidden');
+                subTitle.innerText = "Umumiy reyting";
+                renderGlobalRankingView();
+            }
+        }
+
+        // CHART.JS ANALITIKA GRAFIKLARI
+        function renderAnalytics() {
+            const g = getActiveGroup();
+            if (!g) return;
+
+            const maxScale = g.maxGrade || 100;
+            let excellent = 0, good = 0, bad = 0, unrated = 0;
+            let totalPaid = 0, totalDebt = 0;
+
+            g.students.forEach(s => {
+                const scores = s.gradesList || [];
+                const paid = Number(s.paid) || 0;
+                const debt = Math.max(0, g.fee - paid);
+                totalPaid += paid;
+                totalDebt += debt;
+
+                if (scores.length === 0) {
+                    unrated++;
+                } else {
+                    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+                    const pct = Math.min(100, Math.round((avg / maxScale) * 100));
+                    if (pct >= 80) excellent++;
+                    else if (pct >= 50) good++;
+                    else bad++;
+                }
+            });
+
+            const textColor = '#a1a1aa';
+
+            const ctxMastery = document.getElementById('masteryChart').getContext('2d');
+            if (masteryChartInstance) masteryChartInstance.destroy();
+
+            masteryChartInstance = new Chart(ctxMastery, {
+                type: 'doughnut',
+                data: {
+                    labels: ["A'lo (80%+)", "Yaxshi (50-79%)", "Qoniqarsiz (<50%)", "Ball qo'yilmagan"],
+                    datasets: [{
+                        data: [excellent, good, bad, unrated],
+                        backgroundColor: ['#10b981', '#f59e0b', '#f43f5e', '#27272a'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: textColor, font: { family: 'Plus Jakarta Sans', weight: 'bold', size: 11 } } }
+                    }
+                }
+            });
+
+            const ctxFinance = document.getElementById('financeChart').getContext('2d');
+            if (financeChartInstance) financeChartInstance.destroy();
+
+            financeChartInstance = new Chart(ctxFinance, {
+                type: 'bar',
+                data: {
+                    labels: ["Yig'ilgan to'lov", "Qoldiq qarz"],
+                    datasets: [{
+                        label: "So'm",
+                        data: [totalPaid, totalDebt],
+                        backgroundColor: ['#f59e0b', '#f43f5e'],
+                        borderRadius: 12
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { ticks: { color: textColor, font: { family: 'Plus Jakarta Sans', weight: 'bold' } }, grid: { display: false } },
+                        y: { ticks: { color: textColor }, grid: { color: '#18181b' } }
+                    }
+                }
+            });
+        }
+
+        // ✈️ TELEGRAM KANALGA HAMMANING NATIJASINI BITTADA YUBORISH
+        async function sendGroupToTelegramChannel() {
+            const g = getActiveGroup();
+            if (!g) return;
+
+            if (!config.tgToken || !config.tgChatId) {
+                showToast("Telegram Bot Token va Kanal ID kiritilmagan! Sozlamalarga kiriting.", "error");
+                openSettings();
+                return;
+            }
+
+            if (g.students.length === 0) {
+                showToast("Guruhda o'quvchilar yo'q!", "error");
+                return;
+            }
+
+            showToast("Ma'lumotlar Telegram kanalga yuborilmoqda...");
+
+            const today = new Date().toLocaleDateString('uz-UZ');
+            const maxScale = g.maxGrade || 100;
+            
+            let message = `📊 *${g.name}* guruhi hisoboti\n`;
+            message += `📅 Sana: ${today}\n`;
+            if (g.course) message += `📚 Kurs: ${g.course}\n`;
+            if (g.teacher) message += `👨‍🏫 O'qituvchi: ${g.teacher}\n`;
+            message += `──────────────────\n\n`;
+
+            g.students.forEach((s, idx) => {
+                const att = getStudentAttendanceStats(s);
+                const scores = s.gradesList || [];
+                let avgText = '—', pctText = '0%';
+                if (scores.length > 0) {
+                    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+                    const pct = Math.min(100, Math.round((avg / maxScale) * 100));
+                    avgText = `${avg.toFixed(1)} ball`;
+                    pctText = `${pct}%`;
+                }
+                const paid = Number(s.paid) || 0;
+                const debt = Math.max(0, g.fee - paid);
+
+                message += `${idx + 1}. *${s.name}*\n`;
+                message += `   • Davomat: ${att.pct}% (${att.present}/${att.total})\n`;
+                message += `   • O'zlashtirish: ${pctText} (${avgText})\n`;
+                message += `   • To'lov: ${paid.toLocaleString()} so'm ${debt > 0 ? `(🔴 Qarz: ${debt.toLocaleString()} so'm)` : '🟢 (To\'langan)'}\n\n`;
+            });
+
+            message += `_EduCore O'quv Markazi Tizimi_`;
+
+            try {
+                const res = await fetch(`https://api.telegram.org/bot${config.tgToken}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: config.tgChatId,
+                        text: message,
+                        parse_mode: 'Markdown'
+                    })
+                });
+
+                const data = await res.json();
+                if (data.ok) {
+                    showToast("Guruh natijalari Telegram kanalga muvaffaqiyatli yuborildi!");
+                } else {
+                    showToast(`Telegram xatosi: ${data.description}`, "error");
+                }
+            } catch (e) {
+                showToast("Internet yoki ulanishda xatolik yuz berdi!", "error");
+            }
+        }
+
+        // EXCELGA YUKLAB OLISH
+        function exportGroupToExcel() {
+            const g = getActiveGroup();
+            if (!g) return;
+
+            if (g.students.length === 0) {
+                showToast("Guruhda o'quvchilar yo'q!", "error");
+                return;
+            }
+
+            const wb = XLSX.utils.book_new();
+
+            const journalRows = [
+                ["№", "O'quvchi F.I.SH", "Ota-onasi", "Telefon raqami", "Jami dars", "Kelgan dars", "Davomat (%)", "O'rtacha ball", "O'zlashtirish (%)", "O'qituvchi izohi"]
+            ];
+
+            g.students.forEach((s, idx) => {
+                const att = getStudentAttendanceStats(s);
+                const scores = s.gradesList || [];
+                let avg = 0, pct = 0;
+                const maxScale = g.maxGrade || 100;
+                if (scores.length > 0) {
+                    avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+                    pct = Math.min(100, Math.round((avg / maxScale) * 100));
+                }
+
+                journalRows.push([
+                    idx + 1, s.name, s.parentName || '—', s.phone || '—',
+                    att.total, att.present, att.pct + '%',
+                    scores.length > 0 ? avg.toFixed(1) : '—', pct + '%', s.note || ''
+                ]);
+            });
+
+            const wsJournal = XLSX.utils.aoa_to_sheet(journalRows);
+            XLSX.utils.book_append_sheet(wb, wsJournal, "Guruh Jurnali");
+
+            const financeRows = [
+                ["№", "O'quvchi F.I.SH", "Kurs oylik narxi", "To'lagan summa", "Qoldiq qarz", "To'lov holati"]
+            ];
+
+            g.students.forEach((s, idx) => {
+                const paid = Number(s.paid) || 0;
+                const debt = Math.max(0, g.fee - paid);
+                financeRows.push([
+                    idx + 1, s.name, g.fee, paid, debt,
+                    debt === 0 && g.fee > 0 ? "To'langan" : "Qarz bor"
+                ]);
+            });
+
+            const wsFinance = XLSX.utils.aoa_to_sheet(financeRows);
+            XLSX.utils.book_append_sheet(wb, wsFinance, "To'lovlar va Qarzlar");
+
+            XLSX.writeFile(wb, `${g.name}_Jurnali.xlsx`);
+            showToast(`"${g.name}" jurnali Excelga yuklab olindi!`);
+        }
+
+        function getStudentAttendanceStats(st) {
+            const records = Object.values(st.attendance || {});
+            const total = records.length;
+            if (total === 0) return { pct: 0, present: 0, total: 0 };
+            const present = records.filter(r => r === 'bor').length;
+            return { pct: Math.round((present / total) * 100), present, total };
+        }
+
+        function openStudentProfile(studentId) {
+            let foundStudent = null;
+            let foundGroup = null;
+
+            appData.groups.forEach(g => {
+                const st = g.students.find(s => s.id === studentId);
+                if (st) { foundStudent = st; foundGroup = g; }
+            });
+
+            if (!foundStudent || !foundGroup) return;
+            currentEditingStudentId = studentId;
+
+            document.getElementById('modalStudentAvatar').innerText = foundStudent.name.charAt(0).toUpperCase();
+            document.getElementById('modalStudentName').innerText = foundStudent.name;
+            document.getElementById('modalStudentGroup').innerText = `Guruh: ${foundGroup.name}`;
+
+            document.getElementById('editParentName').value = foundStudent.parentName || '';
+            document.getElementById('editStudentPhone').value = foundStudent.phone || '';
+            document.getElementById('editStudentAddress').value = foundStudent.address || '';
+            document.getElementById('editStudentNote').value = foundStudent.note || '';
+
+            const scores = foundStudent.gradesList || [];
+            const maxScale = foundGroup.maxGrade || 100;
+            let avg = 0, pct = 0;
+
+            if (scores.length > 0) {
+                avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+                pct = Math.min(100, Math.round((avg / maxScale) * 100));
+                document.getElementById('modalStudentAvg').innerText = `${avg.toFixed(1)} / ${maxScale}`;
+                document.getElementById('modalStudentPct').innerText = `${pct}%`;
+            } else {
+                document.getElementById('modalStudentAvg').innerText = '—';
+                document.getElementById('modalStudentPct').innerText = '0%';
+            }
+
+            const attStats = getStudentAttendanceStats(foundStudent);
+            document.getElementById('modalStudentAttPct').innerText = `${attStats.pct}%`;
+            document.getElementById('modalStudentAttDetail').innerText = `${attStats.present} / ${attStats.total} dars`;
+
+            const paid = Number(foundStudent.paid) || 0;
+            const debt = Math.max(0, foundGroup.fee - paid);
+
+            document.getElementById('modalStudentPaid').innerText = `${paid.toLocaleString()} so'm`;
+            document.getElementById('modalStudentDebt').innerText = `${debt.toLocaleString()} so'm`;
+
+            const modal = document.getElementById('studentProfileModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function updateStudentInfo(field, val) {
+            if (!currentEditingStudentId) return;
+            appData.groups.forEach(g => {
+                const st = g.students.find(s => s.id === currentEditingStudentId);
+                if (st) { st[field] = val.trim(); saveData(); }
+            });
+        }
+
+        function closeStudentModal() {
+            const modal = document.getElementById('studentProfileModal');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+            currentEditingStudentId = null; renderAllViews();
+        }
+
+        function openReceiptModal(studentId) {
+            const g = getActiveGroup();
+            const st = g.students.find(s => s.id === studentId);
+            if (!st) return;
+
+            const paid = Number(st.paid) || 0;
+            const debt = Math.max(0, g.fee - paid);
+            const today = new Date().toLocaleDateString('uz-UZ');
+
+            document.getElementById('recId').innerText = `#${studentId.slice(-5)}`;
+            document.getElementById('recDate').innerText = today;
+            document.getElementById('recStudent').innerText = st.name;
+            document.getElementById('recGroup').innerText = g.name;
+            document.getElementById('recAmount').innerText = `${paid.toLocaleString()} so'm`;
+            document.getElementById('recDebt').innerText = `${debt.toLocaleString()} so'm`;
+
+            const modal = document.getElementById('receiptModal');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+
+        function closeReceiptModal() {
+            const modal = document.getElementById('receiptModal');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+        }
+
+        function renderAllStudentsView() {
+            const tbody = document.getElementById('globalStudentsList');
+            let allSt = [];
+            appData.groups.forEach(g => {
+                g.students.forEach(st => {
+                    allSt.push({ ...st, groupName: g.name, groupFee: g.fee, maxGrade: g.maxGrade || 100 });
+                });
+            });
+
+            if (allSt.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-zinc-500 text-xs">Hozircha o'quvchilar yo'q</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = allSt.map((s, i) => {
+                const scores = s.gradesList || [];
+                let avg = '—';
+                if (scores.length > 0) {
+                    const sum = scores.reduce((a, b) => a + b, 0);
+                    avg = (sum / scores.length).toFixed(1) + ' / ' + s.maxGrade;
+                }
+                const paid = Number(s.paid) || 0;
+                const debt = Math.max(0, s.groupFee - paid);
+
+                return `
+                <tr class="hover:bg-zinc-900/60 transition">
+                    <td class="p-4 font-black text-zinc-600">${i + 1}</td>
+                    <td class="p-4 font-black text-amber-400 cursor-pointer hover:underline" onclick="openStudentProfile('${s.id}')">${s.name}</td>
+                    <td class="p-4"><span class="bg-zinc-900 text-zinc-300 border border-zinc-800 px-3 py-1 rounded-xl text-[11px] font-black">${s.groupName}</span></td>
+                    <td class="p-4 font-extrabold text-zinc-200">${avg}</td>
+                    <td class="p-4">${debt === 0 && s.groupFee > 0 ? '<span class="bg-emerald-950/80 text-emerald-400 border border-emerald-800/50 px-2.5 py-1 rounded-xl text-[11px] font-black">To\'langan</span>' : '<span class="bg-amber-950/80 text-amber-400 border border-amber-800/50 px-2.5 py-1 rounded-xl text-[11px] font-black">Qarz bor</span>'}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderGlobalRankingView() {
+            const tbody = document.getElementById('globalRankingList');
+            let rankedStudents = [];
+
+            appData.groups.forEach(g => {
+                const maxScale = g.maxGrade || 100;
+                g.students.forEach(st => {
+                    const scores = st.gradesList || [];
+                    let pct = 0;
+                    if (scores.length > 0) {
+                        const sum = scores.reduce((a, b) => a + b, 0);
+                        pct = Math.min(100, Math.round((sum / scores.length / maxScale) * 100));
+                    }
+                    rankedStudents.push({ id: st.id, name: st.name, groupName: g.name, pct: pct, hasGrade: scores.length > 0 });
+                });
+            });
+
+            rankedStudents.sort((a, b) => b.pct - a.pct);
+
+            if (rankedStudents.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-zinc-500 text-xs">Reyting uchun ma'lumot yo'q</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = rankedStudents.map((s, i) => {
+                let badgeColor = 'bg-zinc-900 text-zinc-300 border border-zinc-800';
+                if (i === 0) badgeColor = 'bg-amber-500 text-black font-black shadow-lg shadow-amber-500/30';
+                else if (i === 1) badgeColor = 'bg-zinc-300 text-zinc-950 font-black';
+                else if (i === 2) badgeColor = 'bg-amber-700 text-white font-black';
+
+                return `
+                <tr class="hover:bg-zinc-900/60 transition">
+                    <td class="p-4 font-black"><span class="w-8 h-8 rounded-xl inline-flex items-center justify-center text-xs ${badgeColor}">${i + 1}</span></td>
+                    <td class="p-4 font-black text-amber-400 cursor-pointer hover:underline" onclick="openStudentProfile('${s.id}')">${s.name}</td>
+                    <td class="p-4"><span class="bg-zinc-900 text-zinc-300 border border-zinc-800 px-3 py-1 rounded-xl text-[11px] font-black">${s.groupName}</span></td>
+                    <td class="p-4 font-black text-emerald-400">${s.hasGrade ? s.pct + '%' : 'Ball yo\'q'}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        document.getElementById('attendanceDate').valueAsDate = new Date();
+        if (sessionStorage.getItem('isLogged') === 'true') showApp();
+
+        function showToast(msg, type = 'success') {
+            const box = document.getElementById('toastBox');
+            const el = document.createElement('div');
+            el.className = `${type === 'error' ? 'bg-rose-600' : 'bg-zinc-900 border border-amber-500/40'} text-white px-5 py-3 rounded-2xl text-xs font-extrabold shadow-2xl flex items-center gap-2.5 animate-scale`;
+            el.innerHTML = `<span>${type === 'error' ? '❌' : '✨'}</span> <span>${msg}</span>`;
+            box.appendChild(el);
+            setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3000);
+        }
+
+        function checkLogin() {
+            if (document.getElementById('loginUser').value === 'admin' && document.getElementById('loginPass').value === '1234') {
+                sessionStorage.setItem('isLogged', 'true');
+                showApp();
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+        }
+
+        function logout() { sessionStorage.removeItem('isLogged'); location.reload(); }
+
+        function showApp() {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            if (appData.groups.length > 0 && !activeGroupId) activeGroupId = appData.groups[0].id;
+            renderGroups();
+        }
+
+        function saveData() { localStorage.setItem('crm_data', JSON.stringify(appData)); }
+
+        function renderGroups() {
+            const container = document.getElementById('groupTabs');
+            container.innerHTML = '';
+            appData.groups.forEach(g => {
+                const isActive = g.id === activeGroupId;
+                const btn = document.createElement('button');
+                btn.className = `px-4 py-3 rounded-2xl font-black text-xs transition flex items-center gap-3 ${isActive ? 'bg-gradient-to-r from-amber-500 to-emerald-500 text-black shadow-lg shadow-amber-500/30' : 'glass-card text-zinc-300 hover:bg-zinc-900 border border-zinc-800'}`;
+                btn.innerHTML = `<span class="truncate">${g.name}</span><span class="px-2 py-0.5 rounded-lg text-[10px] ${isActive ? 'bg-black/20 text-black font-black' : 'bg-zinc-900 text-zinc-400'}">${g.students.length}</span>`;
+                btn.onclick = () => selectGroup(g.id);
+                container.appendChild(btn);
+            });
+
+            if (activeGroupId) {
+                document.getElementById('groupWorkspace').classList.remove('hidden');
+                document.getElementById('noGroupMsg').classList.add('hidden');
+                document.getElementById('tgChannelSendBtn').style.display = 'flex';
+                document.getElementById('excelExportBtnSidebar').style.display = 'flex';
+                document.getElementById('editGroupBtn').classList.remove('hidden');
+                document.getElementById('delGroupBtn').classList.remove('hidden');
+                document.getElementById('groupMetaCard').classList.remove('hidden');
+                
+                const g = getActiveGroup();
+                document.getElementById('metaCourseName').innerText = g.course || 'Kiritilmagan';
+                document.getElementById('metaTeacherName').innerText = g.teacher || 'Kiritilmagan';
+                
+                const schedText = [g.schedule, g.room ? `${g.room}-xona` : ''].filter(Boolean).join(' • ');
+                document.getElementById('metaSchedule').innerText = schedText || 'Belgilanmagan';
+
+                renderAllViews();
+            } else {
+                document.getElementById('groupWorkspace').classList.add('hidden');
+                document.getElementById('noGroupMsg').classList.remove('hidden');
+                document.getElementById('tgChannelSendBtn').style.display = 'none';
+                document.getElementById('excelExportBtnSidebar').style.display = 'none';
+                document.getElementById('editGroupBtn').classList.add('hidden');
+                document.getElementById('delGroupBtn').classList.add('hidden');
+                document.getElementById('groupMetaCard').classList.add('hidden');
+            }
+        }
+
+        function addGroup() {
+            const name = prompt("Yangi guruh nomini kiriting (Masalan: Frontend A):");
+            if (name && name.trim()) {
+                const newG = { id: Date.now().toString(), name: name.trim(), fee: 300000, maxGrade: 100, course: '', teacher: '', schedule: '', room: '', students: [] };
+                appData.groups.push(newG);
+                activeGroupId = newG.id;
+                saveData();
+                renderGroups();
+                showToast(`"${newG.name}" guruhi yaratildi`);
+            }
+        }
+
+        function editGroupDetails() {
+            const g = getActiveGroup();
+            if (!g) return;
+            const newName = prompt("Guruh nomi:", g.name);
+            const newCourse = prompt("Kurs yoki fan nomi:", g.course || '');
+            const newTeacher = prompt("O'qituvchi F.I.SH:", g.teacher || '');
+            const newSchedule = prompt("Dars kunlari va vaqti (Masalan: Dush-Chor-Jum, 14:00):", g.schedule || '');
+            const newRoom = prompt("Xona raqami (Masalan: 204):", g.room || '');
+            
+            if (newName && newName.trim()) g.name = newName.trim();
+            g.course = newCourse ? newCourse.trim() : '';
+            g.teacher = newTeacher ? newTeacher.trim() : '';
+            g.schedule = newSchedule ? newSchedule.trim() : '';
+            g.room = newRoom ? newRoom.trim() : '';
+            saveData();
+            renderGroups();
+            showToast("Guruh ma'lumotlari yangilandi");
+        }
+
+        function deleteGroup() {
+            if (confirm("Guruhni o'chirishni tasdiqlaysizmi?")) {
+                appData.groups = appData.groups.filter(g => g.id !== activeGroupId);
+                activeGroupId = appData.groups.length ? appData.groups[0].id : null;
+                saveData();
+                renderGroups();
+                showToast("Guruh o'chirildi", "error");
+            }
+        }
+
+        function selectGroup(id) { activeGroupId = id; renderGroups(); }
+        function getActiveGroup() { return appData.groups.find(g => g.id === activeGroupId); }
+
+        function switchTab(tabName) {
+            ['students', 'attendance', 'grades', 'payments', 'analytics'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).classList.remove('tab-active');
+                document.getElementById(`tab-${t}`).classList.add('text-zinc-400');
+            });
+            document.getElementById(`view-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}`).classList.add('tab-active');
+            document.getElementById(`tab-${tabName}`).classList.remove('text-zinc-400');
+            renderAllViews();
+            if (tabName === 'analytics') {
+                setTimeout(renderAnalytics, 50);
+            }
+        }
+
+        function renderAllViews() { renderStudents(); renderAttendance(); renderGrades(); renderPayments(); }
+
+        function addStudent() {
+            const input = document.getElementById('newStudentName');
+            const name = input.value.trim();
+            const g = getActiveGroup();
+            if (name && g) {
+                g.students.push({ id: Date.now().toString(), name: name, parentName: '', phone: '', address: '', attendance: {}, gradesList: [], note: '', paid: 0 });
+                input.value = '';
+                saveData();
+                renderGroups();
+                showToast("O'quvchi qo'shildi");
+            }
+        }
+
+        function editStudent(id) {
+            const g = getActiveGroup();
+            const st = g.students.find(s => s.id === id);
+            const newName = prompt("O'quvchi ism-familiyasi:", st.name);
+            if (newName && newName.trim()) { st.name = newName.trim(); saveData(); renderAllViews(); showToast("Yangilandi"); }
+        }
+
+        function deleteStudent(id) {
+            if (confirm("O'chirishni tasdiqlaysizmi?")) {
+                const g = getActiveGroup();
+                g.students = g.students.filter(s => s.id !== id);
+                saveData(); renderGroups(); showToast("O'chirildi", "error");
+            }
+        }
+
+        function renderStudents() {
+            const g = getActiveGroup();
+            if (!g) return;
+            const searchTerm = document.getElementById('studentSearchInput').value.toLowerCase();
+            const tbody = document.getElementById('studentsList');
+            
+            const filtered = g.students.filter(s => s.name.toLowerCase().includes(searchTerm));
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-zinc-500 text-xs">O'quvchi topilmadi</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = filtered.map((s, i) => `
+                <tr class="hover:bg-zinc-900/60 transition">
+                    <td class="p-4 font-black text-zinc-600">${i + 1}</td>
+                    <td class="p-4 font-black text-white flex items-center gap-3.5">
+                        <div class="w-9 h-9 rounded-2xl bg-zinc-900 text-amber-400 border border-zinc-800 flex items-center justify-center text-xs font-black shadow-sm">${s.name.charAt(0)}</div>
+                        <span class="cursor-pointer hover:text-amber-400 hover:underline" onclick="openStudentProfile('${s.id}')">${s.name}</span>
+                    </td>
+                    <td class="p-4 text-right">
+                        <button onclick="editStudent('${s.id}')" class="p-2.5 rounded-xl text-zinc-400 hover:text-amber-400 hover:bg-zinc-900 transition">✏️</button>
+                        <button onclick="deleteStudent('${s.id}')" class="p-2.5 rounded-xl text-zinc-400 hover:text-rose-400 hover:bg-zinc-900 transition">🗑️</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function setAttendance(studentId, status) {
+            const g = getActiveGroup();
+            const date = document.getElementById('attendanceDate').value;
+            const st = g.students.find(s => s.id === studentId);
+            if (st && date) { st.attendance[date] = status; saveData(); renderAttendance(); }
+        }
+
+        function renderAttendance() {
+            const g = getActiveGroup();
+            const date = document.getElementById('attendanceDate').value;
+            if (!g) return;
+            let bor = 0, yoq = 0, sababli = 0;
+            const tbody = document.getElementById('attendanceList');
+            
+            tbody.innerHTML = g.students.map((s, i) => {
+                const status = s.attendance[date] || '';
+                if (status === 'bor') bor++; if (status === 'yoq') yoq++; if (status === 'sababli') sababli++;
+                return `
+                <tr class="hover:bg-zinc-900/60 transition">
+                    <td class="p-4 font-black text-zinc-600">${i + 1}</td>
+                    <td class="p-4 font-black text-white cursor-pointer hover:underline" onclick="openStudentProfile('${s.id}')">${s.name}</td>
+                    <td class="p-4">
+                        <div class="inline-flex bg-zinc-900 border border-zinc-800 p-1 rounded-2xl gap-1">
+                            <button onclick="setAttendance('${s.id}', 'bor')" class="px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition ${status === 'bor' ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/30' : 'text-zinc-400 hover:text-white'}">Bor</button>
+                            <button onclick="setAttendance('${s.id}', 'yoq')" class="px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition ${status === 'yoq' ? 'bg-rose-500 text-white shadow-md shadow-rose-500/30' : 'text-zinc-400 hover:text-white'}">Yo'q</button>
+                            <button onclick="setAttendance('${s.id}', 'sababli')" class="px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition ${status === 'sababli' ? 'bg-amber-500 text-black shadow-md shadow-amber-500/30' : 'text-zinc-400 hover:text-white'}">Sababli</button>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join('');
+            document.getElementById('attendanceSummary').innerHTML = `<span class="text-emerald-400 bg-emerald-950/60 border border-emerald-800/50 px-3 py-1 rounded-xl">Keldi: ${bor}</span><span class="text-rose-400 bg-rose-950/60 border border-rose-800/50 px-3 py-1 rounded-xl">Kelmadi: ${yoq}</span>`;
+        }
+
+        function updateMaxGrade() {
+            const g = getActiveGroup();
+            if (g) { g.maxGrade = Number(document.getElementById('maxGradeScale').value) || 100; saveData(); renderGrades(); }
+        }
+
+        function addGradeScore(studentId) {
+            const g = getActiveGroup();
+            const st = g.students.find(s => s.id === studentId);
+            const val = Number(document.getElementById(`grade-input-${studentId}`).value);
+            if (isNaN(val) || val < 0 || val > g.maxGrade) { showToast("Noto'g'ri ball!", "error"); return; }
+            if (!Array.isArray(st.gradesList)) st.gradesList = [];
+            st.gradesList.push(val);
+            document.getElementById(`grade-input-${studentId}`).value = '';
+            saveData(); renderGrades();
+        }
+
+        function removeGradeScore(studentId, index) {
+            const g = getActiveGroup();
+            g.students.find(s => s.id === studentId).gradesList.splice(index, 1);
+            saveData(); renderGrades();
+        }
+
+        function updateGradeNote(id, val) { getActiveGroup().students.find(s => s.id === id).note = val; saveData(); }
+
+        function renderGrades() {
+            const g = getActiveGroup();
+            if (!g) return;
+            const maxScale = g.maxGrade || 100;
+            document.getElementById('maxGradeScale').value = maxScale;
+            let totalSum = 0, count = 0, top = { name: '—', pct: -1 };
+
+            document.getElementById('gradesList').innerHTML = g.students.map((s, i) => {
+                if (!Array.isArray(s.gradesList)) s.gradesList = s.grade ? [Number(s.grade)] : [];
+                const scores = s.gradesList;
+                let avg = 0, pct = 0;
+                if (scores.length > 0) {
+                    avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+                    pct = Math.min(100, Math.round((avg / maxScale) * 100));
+                    totalSum += pct; count++;
+                    if (pct > top.pct) top = { name: s.name, pct };
+                }
+                const badges = scores.map((sc, idx) => `<span onclick="removeGradeScore('${s.id}', ${idx})" class="cursor-pointer px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-amber-400 text-xs font-black shadow-sm">${sc}</span>`).join(' ');
+
+                return `
+                <tr class="hover:bg-zinc-900/60 transition">
+                    <td class="p-4 font-black text-zinc-600">${i + 1}</td>
+                    <td class="p-4 font-black cursor-pointer hover:underline text-amber-400" onclick="openStudentProfile('${s.id}')">${s.name}</td>
+                    <td class="p-4"><div class="flex gap-1.5 items-center flex-wrap">${badges}<input type="number" id="grade-input-${s.id}" class="rounded-xl w-16 text-xs p-1.5 text-center font-bold outline-none border border-zinc-800" placeholder="Ball"><button onclick="addGradeScore('${s.id}')" class="bg-amber-500 hover:bg-amber-400 text-black font-black w-7 h-7 rounded-xl text-xs shadow-sm">+</button></div></td>
+                    <td class="p-4 font-extrabold text-zinc-200">${scores.length > 0 ? avg.toFixed(1) + ' / ' + maxScale : '—'}</td>
+                    <td class="p-4"><div class="flex items-center gap-2.5"><div class="w-full bg-zinc-900 h-2.5 rounded-full overflow-hidden border border-zinc-800"><div class="bg-gradient-to-r from-emerald-500 to-amber-400 h-full rounded-full" style="width: ${pct}%"></div></div><span class="text-xs font-black text-emerald-400">${pct}%</span></div></td>
+                    <td class="p-4"><input type="text" value="${s.note || ''}" onchange="updateGradeNote('${s.id}', this.value)" class="p-2 rounded-xl text-xs font-medium w-full outline-none border border-zinc-800" placeholder="Izoh..."></td>
+                </tr>`;
+            }).join('');
+            document.getElementById('groupAvgMastery').innerText = count > 0 ? Math.round(totalSum / count) + '%' : '0%';
+            document.getElementById('groupTopStudent').innerText = top.pct >= 0 ? `🏆 Eng yaxshi: ${top.name} (${top.pct}%)` : 'Eng yaxshi: —';
+        }
+
+        function updateCourseFee() { getActiveGroup().fee = Number(document.getElementById('courseFee').value) || 0; saveData(); renderPayments(); }
+        function updatePayment(id, val) { getActiveGroup().students.find(s => s.id === id).paid = Number(val) || 0; saveData(); renderPayments(); }
+
+        function openSmsModal(studentName, debtAmount) {
+            const modal = document.getElementById('smsModal');
+            const txt = document.getElementById('smsTextContent');
+            txt.value = `Assalomu alaykum! Hurmatli ota-ona, o'quv markazimizdagi kurs uchun ${debtAmount.toLocaleString()} so'm qarzdorlik mavjud. Iltimos, o'z vaqtida to'lov qilishingizni so'raymiz.`;
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+        function closeSmsModal() { document.getElementById('smsModal').classList.add('hidden'); document.getElementById('smsModal').classList.remove('flex'); }
+        function copySmsText() {
+            navigator.clipboard.writeText(document.getElementById('smsTextContent').value);
+            showToast("SMS matni nusxalandi!"); closeSmsModal();
+        }
+
+        function renderPayments() {
+            const g = getActiveGroup();
+            if (!g) return;
+            document.getElementById('courseFee').value = g.fee;
+            let paidCount = 0, totalPaid = 0, totalDebt = 0;
+
+            document.getElementById('paymentsList').innerHTML = g.students.map((s, i) => {
+                const paid = Number(s.paid) || 0;
+                const debt = Math.max(0, g.fee - paid);
+                if (paid > 0) paidCount++;
+                totalPaid += paid; totalDebt += debt;
+
+                return `
+                <tr class="hover:bg-zinc-900/60 transition">
+                    <td class="p-4 font-black text-zinc-600">${i + 1}</td>
+                    <td class="p-4 font-black cursor-pointer hover:underline text-amber-400" onclick="openStudentProfile('${s.id}')">${s.name}</td>
+                    <td class="p-4"><input type="number" value="${paid}" onchange="updatePayment('${s.id}', this.value)" class="p-2.5 rounded-xl w-36 font-extrabold text-xs outline-none border border-zinc-800"></td>
+                    <td class="p-4 font-black ${debt > 0 ? 'text-rose-400' : 'text-emerald-400'}">${debt.toLocaleString()} so'm</td>
+                    <td class="p-4 flex flex-wrap items-center gap-2">
+                        <button onclick="openReceiptModal('${s.id}')" class="bg-zinc-900 text-zinc-300 hover:bg-zinc-800 px-3 py-2 rounded-xl text-xs font-black transition border border-zinc-800">🧾 Chek</button>
+                        ${debt === 0 && g.fee > 0 ? '<span class="bg-emerald-950/80 text-emerald-400 border border-emerald-800/50 px-3 py-1.5 rounded-xl text-[11px] font-black">To\'langan</span>' : `<button onclick="openSmsModal('${s.name}', ${debt})" class="bg-amber-950 text-amber-400 border border-amber-800/60 hover:bg-amber-900 px-3 py-2 rounded-xl text-xs font-black shadow-sm transition">💬 SMS</button>`}
+                    </td>
+                </tr>`;
+            }).join('');
+
+            document.getElementById('statPaidCount').innerText = `${paidCount} / ${g.students.length} kishi`;
+            document.getElementById('statTotalPaid').innerText = `${totalPaid.toLocaleString()} so'm`;
+            document.getElementById('statTotalDebt').innerText = `${totalDebt.toLocaleString()} so'm`;
+            document.getElementById('statExpected').innerText = `${(g.students.length * g.fee).toLocaleString()} so'm`;
+        }
+
+        function openSettings() {
+            toggleSidebar();
+            document.getElementById('cfgTgToken').value = config.tgToken || '';
+            document.getElementById('cfgTgChatId').value = config.tgChatId || '';
+            document.getElementById('cfgBinId').value = config.binId;
+            document.getElementById('cfgApiKey').value = config.apiKey;
+            document.getElementById('cfgLogin').value = config.user;
+            document.getElementById('cfgPass').value = config.pass;
+            document.getElementById('settingsModal').classList.remove('hidden');
+            document.getElementById('settingsModal').classList.add('flex');
+        }
+        function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').classList.remove('flex'); }
+        function saveSettings() {
+            config.tgToken = document.getElementById('cfgTgToken').value.trim();
+            config.tgChatId = document.getElementById('cfgTgChatId').value.trim();
+            config.binId = document.getElementById('cfgBinId').value.trim();
+            config.apiKey = document.getElementById('cfgApiKey').value.trim();
+            if (document.getElementById('cfgLogin').value.trim()) config.user = document.getElementById('cfgLogin').value.trim();
+            if (document.getElementById('cfgPass').value.trim()) config.pass = document.getElementById('cfgPass').value.trim();
+            localStorage.setItem('crm_config', JSON.stringify(config));
+            closeSettings(); showToast("Sozlamalar saqlandi!");
+        }
+
+        async function syncToCloud() {
+            if (!config.binId || !config.apiKey) { showToast("Bin ID va API Key kiritilmagan!", "error"); openSettings(); return; }
+            try {
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${config.binId}`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Master-Key': config.apiKey },
+                    body: JSON.stringify(appData)
+                });
+                if (res.ok) showToast("Bulutga muvaffaqiyatli saqlandi!"); else showToast("Xatolik!", "error");
+            } catch (e) { showToast("Internet yo'q!", "error"); }
+        }
+
+        async function syncFromCloud() {
+            if (!config.binId || !config.apiKey) { showToast("Bin ID va API Key kiritilmagan!", "error"); openSettings(); return; }
+            try {
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${config.binId}/latest`, { headers: { 'X-Master-Key': config.apiKey } });
+                if (res.ok) {
+                    appData = (await res.json()).record;
+                    saveData(); activeGroupId = appData.groups.length ? appData.groups[0].id : null;
+                    renderGroups(); showToast("Bulutdan yuklab olindi!");
+                } else showToast("Xatolik!", "error");
+            } catch (e) { showToast("Internet yo'q!", "error"); }
+        }
+    </script>
+</body>
+</html>
